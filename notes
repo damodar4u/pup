@@ -1,7 +1,66 @@
 ubuntu@ip-172-31-35-7:~/codespaces/cs-puppet$ pwd
 /home/ubuntu/codespaces/cs-puppet
 
+
 sudo docker ps
 
 sudo docker exec -it <container name> /bin/bash
+
+root@puppet:/workspace# ssh devops@node1
+
+[devops@node1 ~]$ sudo su
+
+[root@node1 devops]# puppet agent -t
+Info: Creating a new SSL key for node1.codespaces.io
+Info: Caching certificate for ca
+Info: csr_attributes file loading from /etc/puppetlabs/puppet/csr_attributes.yaml
+Info: Creating a new SSL certificate request for node1.codespaces.io
+Info: Certificate Request fingerprint (SHA256): 97:D9:C0:06:F1:F4:ED:6E:B7:0A:32:13:D6:09:AF:0D:53:72:52:2B:0F:C6:5D:2A:02:3C:B0:A3:07:CB:F4:11
+Info: Caching certificate for ca
+Exiting; no certificate found and waitforcert is disabled
+
+ping puppet
+
+puppet agent -t --server <puppetserver>
+
+puppet cert list --all or -a
+
+puppet cert list
+
+root@puppet:/workspace# puppet cert sign node1.codespaces.io
+
+Signing Certificate Request for:
+  "node1.codespaces.io" (SHA256) 97:D9:C0:06:F1:F4:ED:6E:B7:0A:32:13:D6:09:AF:0D:53:72:52:2B:0F:C6:5D:2A:02:3C:B0:A3:07:CB:F4:11
+Notice: Signed certificate request for node1.codespaces.io
+Notice: Removing file Puppet::SSL::CertificateRequest node1.codespaces.io at '/etc/puppetlabs/puppet/ssl/ca/requests/node1.codespaces.io.pem'
+
+root@puppet:/workspace# puppet cert sign --all or -a
+
+regenerating certs for a particular node 
+
+clean 
+if run as root
+
+/etc/puppetlabs/puppet/ssl/*
+
+if run as user clean
+
+/home/devops/.puppetlabs/etc/puppet/ssl/*
+
+revoke cert from master 
+puppet cert revoke <cert_name>
+
+puppet cert clean <cert_name>
+
+regenerate cert using 
+puppet agent -t
+
+
+
+
+
+
+
+
+
 
