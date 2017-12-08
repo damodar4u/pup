@@ -3,5 +3,5 @@ ubuntu@ip-172-31-35-7:~/codespaces/cs-puppet$ pwd
 
 sudo docker ps
 
-docker exec -it <container name> /bin/bash
+sudo docker exec -it <container name> /bin/bash
 
