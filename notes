@@ -1,5 +1,11 @@
+export TERM=xterm
+stty rows 36 cols 150
+
 ubuntu@ip-172-31-35-7:~/codespaces/cs-puppet$ pwd
 /home/ubuntu/codespaces/cs-puppet
+
+sudo systemctl start docker
+sudo docker-compose up -d
 
 
 sudo docker ps
@@ -54,6 +60,163 @@ puppet cert clean <cert_name>
 
 regenerate cert using 
 puppet agent -t
+
+*********
+user { 'devops':
+uid => '5001',
+gid => '5001'
+home => '/home/devops',
+shell => '/bin/bash',
+ensure => present
+}
+******
+
+
+create user deploy 
+install packages (tree,git,ntp,wget,unzip)
+start service ntp
+remove user dojo
+add file /etc/motd with content "XYZ"
+
+
+password: 
+openssl passwd -1
+
+welcome
+
+base.pp
+*****
+
+user { 'deploy':
+uid => '5001',
+home => '/home/deploy',
+shell => '/bin/bash',
+managehome => 'true',
+ensure => present,
+password => '$1$ExRhl.Vm$8PNMMINPSVFsZLHI8j.5n1'
+}
+
+package { 'tree':
+ensure => installed
+}
+
+package { 'git':
+}
+
+package { ['wget','unzip','ntp']:
+}
+
+user { 'dojo':
+ensure => absent,
+
+}
+
+service { 'ntp':
+ensure => running,
+enable => true
+}
+
+file { '/etc/motd':
+owner => 'root',
+group => 'root',
+mode => '0644',
+content => '
+XYZ
+abc
+'
+}
+
+***
+apt-get update
+service ntp status
+
+check for syntax error 
+puppet parser validate base.pp 
+
+standalone 
+puppet apply
+
+
+****
+idempotence and convergence 
+
+loads facts , clean cache , complie catalog, converge/apply, sends report back to  master
+
+
+***
+exec Guards (only_if, unless, creates (if file already exists do not create it again ),
+refreshonly => true (by default the resource do not get executed, runs only if some other resource notifies it))
+
+
+****
+Modules, classes, ordering , node classification, notification and handling
+
+Anatomy
+manifests, files, templates, data, spec (unit testing), examples , metadata.json (who wrote the module, what goes inside the module ), 
+README.md (documentation)
+
+**********
+
+
+modules are stored on puppet master
+
+where do modules stored ?
+master-code-dir: /etc/puppetlabs/code
+master-code-dir: /workspace/code
+
+
+cp -r /etc/puppetlabs/code /workspace/code
+/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf
+restart
+
+service puppetserver restart
+
+
+*****
+generate modules for tomcat and java module apply to node1 and node 2
+create class to install java
+create node definition to apply classes
+create classes to install tomcat and start the service, apply
+write classes to manage config files
+
+
+puppet help module
+
+module should be generated inside 
+/workspace/code/environments/production/modules
+
+puppet module generate --help
+puppet module generate [--skip-interview] <name>
+puppet module generate --skip-interview user-java 
+puppet module generate --skip-interview user-tomcat
+
+***
+classes
+
+default manifest init.pp
+
+each manifest contains a class , a named container, which encomapses one or more resources
+:: is added to class names to seperate the namespaces, to uniquely identify classes within the modules
+
+modules >tomcat > manifests > {init.pp,xyz.pp,abc.pp}  
+class tomcat::abc
+class tomcat::xyz
+class tomcat
+
+Strategies
+******
+every single feature we add to an app should have its own class and inturn a manifest, gives fine grained control
+on what to call and what to omoit
+
+every single lifecycle of an app should get a manifest of its own (install, configure, start the service, )
+init.pp, deploy.pp, ssl.pp, install.pp, config.pp, service.pp
+
+https://github.com/puppetlabs/puppetlabs-ntp
+
+
+
+
+
 
 
 
