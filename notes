@@ -1,8 +1,30 @@
 export TERM=xterm
 stty rows 36 cols 150
 
+sudo docker ps -qa | xargs -n1 sudo docker stop
+sudo docker ps -qa | xargs -n1 sudo docker rm -v -f 
+
+
 ubuntu@ip-172-31-35-7:~/codespaces/cs-puppet$ pwd
 /home/ubuntu/codespaces/cs-puppet
+
+edit docker-compose.yml file to change 
+  node1:
+    image: codespaces/puppet-node-centos-6:v0.1.3
+    ports:
+       - "81:8080"
+    networks:
+      - puppet
+    container_name: node1
+    domainname: codespaces.io
+    hostname: node1
+    restart: always
+
+sudo docker ps
+sudo docker kill 23223a34522a
+sudo docker rm 23223a34522a
+
+
 
 sudo systemctl start docker
 sudo docker-compose up -d
@@ -73,7 +95,7 @@ ensure => present
 
 
 create user deploy 
-install packages (tree,git,ntp,wget,unzip)
+packages (tree,git,ntp,wget,unzip)
 start service ntp
 remove user dojo
 add file /etc/motd with content "XYZ"
@@ -212,6 +234,486 @@ every single lifecycle of an app should get a manifest of its own (install, conf
 init.pp, deploy.pp, ssl.pp, install.pp, config.pp, service.pp
 
 https://github.com/puppetlabs/puppetlabs-ntp
+
+****
+tomcat::install
+tomcat::config
+tomcat::service
+
+java::install
+
+***
+/workspace/code/environments/production/modules/java/manifests
+install.pp
+
+
+class java::install {
+package { ["epel-release", "java-1.7.0-openjdk"]:
+}
+}
+
+
+****
+node definition resides inside 
+/workspace/code/environments/production/manifests (webservers.pp, db.pp)
+
+app.pp
+
+node 'node1' {
+include java::install
+}
+
+****
+notify is a resource and a metaparameter 
+
+app.pp
+
+node 'node1' {
+notify {"***** node1 block****":}
+include java::install
+}
+
+****
+
+/workspace/code/environments/production/manifests/app.pp
+
+node 'node1' {
+notify {"***** node1 block****":}
+include java::install
+}
+
+node default {
+notify {"checkpoint1":
+message => "
+default block applied
+"
+}
+}
+
+*******
+
+ordering, notification and metaparams
+
+package --> service (require package)
+package(before service)  --> service
+
+ordering with notification
+  restart service if file chnages
+  file (notify service)----> service
+  file --> Service (subscribe for file change) 
+
+
+resource chaining 
+
+Package["nginx"] ~> File["nginx.conf"] ~> Service["nginx"] (tildea) // we can avoid require notify subscribe
+can be applied to classes 
+
+
+parameters of a resource [before , require, subscribe, notify], these params can be applied to any resource: Meta params
+
+to list all meta params use 
+puppet describe -sm package
+
+
+***********
+
+create tomcat and start service 
+
+tomcat install (tomcat, tomcat-webapps)
+tomcat service 
+apply them to node1 (node definition)
+
+/workspace/code/environments/production/modules/tomcat/manifests
+
+install.pp
+
+class tomcat::install {
+package { ["tomcat", "tomcat-webapps"]:
+}
+}
+
+service.pp
+
+class tomcat::service {
+service {"tomcat":
+ensure => running,
+enable => true
+}
+}
+
+/workspace/code/environments/production/manifests/app.pp
+
+node 'node1' {
+notify {"***** node1 block****":}
+include java::install
+include tomcat::install
+include tomcat::service
+}
+
+node default {
+notify {"checkpoint1":
+message => "
+default block applied
+"
+}
+}
+
+
+ps -ef | grep tomcat
+
+****
+/workspace/code/environments/production/modules/tomcat/manifests
+
+init.pp
+
+move includes from node (app.pp) to init.pp inside tomcat module // simplifies node definition
+
+********
+
+static configuration files maintained under files
+config.pp to copy file from puppet master to destination directory of node 
+
+/etc/tomcat/tomcat.conf
+
+
+/workspace/code/environments/production/modules/tomcat/files
+
+TOMCAT_CFG_LOADED="1"                                                                                                           
+                                                                                                                                
+JAVA_HOME="/usr/lib/jvm/jre"
+JAVA_OPTS="-Xms64m -Xmx128m -XX:MaxPermSize=128M -Djava.security.egd=file:/dev/./urandom"
+                                                                                                                                
+CATALINA_BASE="/usr/share/tomcat"                                                                                               
+CATALINA_HOME="/usr/share/tomcat"                                                                                               
+JASPER_HOME="/usr/share/tomcat"                                                                                                 
+CATALINA_TMPDIR="/var/cache/tomcat/temp"                                                                                        
+                                                                                                                                
+                                                                                                                                
+TOMCAT_USER="tomcat"                                                                                                            
+                                                                                                                                
+SECURITY_MANAGER="false"                                                                                                        
+                                                                                                                                
+SHUTDOWN_WAIT="30"                                                                                                              
+                                                                                                                                
+SHUTDOWN_VERBOSE="false"                                                                                                        
+                                                                                                                                
+CATALINA_PID="/var/run/tomcat.pid" 
+
+
+
+/workspace/code/environments/production/modules/tomcat/manifests/config.pp
+
+class tomcat::config {
+
+file { '/etc/tomcat/tomcat.conf':
+source => 'puppet:///modules/tomcat/tomcat.conf',
+mode => '0644',
+owner => 'tomcat',
+group => 'tomcat',
+notify => Service['tomcat']
+}
+
+}
+
+/workspace/code/environments/production/modules/tomcat/manifests/init.pp
+
+class tomcat {
+include java::install
+include tomcat::install
+include tomcat::config
+include tomcat::service
+}
+
+
+/workspace/code/environments/production/manifests/app.pp
+
+node 'node1' {
+include tomcat
+notify {"***** node1 block****":}
+}
+
+node default {
+notify {"checkpoint1":
+message => "
+default block applied
+"
+}
+}
+
+**********************
+
+Paramters
+
+code vs data, scoping, inheritance, facts
+
+Same module can be used to configure differnt environments and different platforms
+generic modules can be shared through puppetforge
+
+code resides in (manifests/templates)
+
+data (params) --> (user defined (hiera,  parametrised class (params.pp)), system defined (facter))
+
+take properties out of module
+
+modules define the default properties
+
+we can selectively overwrite the default properties
+
+we can overwrite the properties from node definition or from external dat sources (hiera)
+
+defaults inside the module (params.pp (old way), hiera (newway))
+
+params.pp 
+(dedicated class to define data/params/properties)
+can be used to write logic to seperate system specific properties
+
+
+create a module called prefs
+
+puppet module generate --skip-interview user-prefs
+
+
+/workspace/code/environments/production/modules/prefs/manifests
+params.pp
+
+define params in params.pp and use it in resource (title or name, inside parameter values, inside template variables )
+
+inheritence
+
+params.pp --> init.pp (inherits xyz::params.pp)  --> config.pp (inherits xyz)
+
+Parameterizong tomcat configs
+
+pakage names
+service name and properties
+config file path, owner, group 
+
+params.pp
+ 
+class tomcat::params {
+  $user  = 'tomcat'
+  $group = 'tomcat'
+  $config_path  = '/etc/tomcat/tomcat.conf'
+  $packages  = [ 'tomcat', 'tomcat-webapps' ]
+  $service_name = 'tomcat'
+  $service_state = running
+ 
+}
+
+
+init.pp
+
+class tomcat inherits tomcat::params{
+
+include java::install
+include tomcat::install
+include tomcat::config
+include tomcat::service
+}
+
+    
+ install.pp
+ 
+ class tomcat::install inherits tomcat{
+    
+    include java
+    
+    package { $::tomcat::packages:
+      ensure   => installed, 
+      require  => Package['epel-release']
+    }
+ 
+}
+
+config.pp
+
+class tomcat::config inherits tomcat{
+ 
+  file { $::tomcat::config_path:
+    source    => 'puppet:///modules/tomcat/tomcat.conf',
+    owner    => $::tomcat::user, 
+    group    => $::tomcat::group, 
+    mode     => '0644',
+    notify   => Service['tomcat'] 
+  }
+ 
+}
+    
+
+service.pp
+
+class tomcat::service inherits tomcat{
+ 
+   service { $::tomcat::service_name:
+     ensure   => $::tomcat::service_state, 
+     enable   => true,
+     require  => Class['tomcat::install'],
+   }
+}
+********
+system defined params
+
+facter os
+facter os.family
+facter os.distro.release.full
+facter memory.system.total
+
+******
+
+Templates
+
+dynamic files
+
+erb syntax
+
+server.xml
+dev (memory=128mb, port 8081), staging (memory=1gb, port 8888), prod (memory=4b, port 8080)
+
+parametrize the file (template) , data comes from with in the module or from node definition or from hiera
+
+markers used to embed code 
+
+<%=  %>   // if it is an expression use =
+<%   %>   // evaluate coditionals, if it is conditional use this syntyax
+
+
+memory = <%= @memory %>
+port = <%= @port %>
+
+
+templatize tomcat configs
+
+/workspace/code/environments/production/modules/tomcat# mkdir templates
+cd /workspace/code/environments/production/modules/tomcat/templates
+ cp /workspace/code/environments/production/modules/tomcat/files/tomcat.conf /workspace/code/environments/production/modules/tomcat/templates/tomcat.conf.erb
+
+
+tomcat.conf.erb
+
+TOMCAT_CFG_LOADED=<%= @tomcat_cfg_loaded %>                                                                                             
+JAVA_HOME=<%= @java_home %>
+JAVA_OPTS=<%= @java_opts %>
+CATALINA_BASE=<%= @catalina_base %>                                                                                               
+CATALINA_HOME=<%= @catalina_home %>                                                                                              
+JASPER_HOME=<%= @jasper_home %>                                                                                                
+CATALINA_TMPDIR=<%= @catalina_tmpdir %>                                                                                        
+TOMCAT_USER=<%= @user %>                                                                                                               
+SECURITY_MANAGER=<%= @security_manager %>                       
+SHUTDOWN_WAIT=<%= @shutdown_wait %>                                                                                                     
+SHUTDOWN_VERBOSE=<%= @shutdown_verbose %>                                
+CATALINA_PID=<%= @catalina_pid %> 
+             
+define the default params in params.pp
+
+class tomcat::params {
+  $user  = 'tomcat'
+  $group = 'tomcat'
+  $config_path  = '/etc/tomcat/tomcat.conf'
+  $packages  = [ 'tomcat', 'tomcat-webapps' ]
+  $service_name = 'tomcat'
+  $service_state = running
+  $tomcat_cfg_loaded = "1"
+  $java_home = "/usr/lib/jvm/jre"
+  $xms = "64m"
+  $xmx = "128m"
+  $maxpermsize = "128M"
+  $java_opts = "-Xms${xms} -Xmx${xmx} -XX:MaxPermSize=${maxpermsize} -Djava.security.egd=file:/dev/./urandom"
+  $catalina_base = "/usr/share/tomcat"  
+  $catalina_home = "/usr/share/tomcat"
+  $jasper_home = "/usr/share/tomcat"  
+  $catalina_tmpdir = "/var/cache/tomcat/temp" 
+  $security_manager = "false"
+  $shutdown_wait = "30"
+  $shutdown_verbose = "false"
+  $catalina_pid = "/var/run/tomcat.pid"
+}
+
+config.pp
+
+change source to content in config.pp to refer to template
+
+class tomcat::config inherits tomcat{
+  file { $::tomcat::config_path:
+    #source    => 'puppet:///modules/tomcat/tomcat.conf',
+    content  => template('tomcat/tomcat.conf.erb'),
+    owner    => $::tomcat::user, 
+    group    => $::tomcat::group, 
+    mode     => '0644',
+    notify   => Service['tomcat'] 
+  }
+
+}
+
+*********************
+
+Parameterized classess
+
+providing data to modules from outside
+
+params.pp module with default properties
+
+design pattern --> params.pp sends parameters to init.pp which includes all classes, these included classes inherit init.pp
+
+these params.pp is consumed by all classes via init.pp
+
+in this design pattern, if a param is defined in init.pp and child class, the child classs take precedence over the init.pp 
+
+class tomcat(
+$user = $::tomcat::params::user,
+$group = $::tomcat::params::group,
+$config_path  = $::tomcat::params::config_path,
+$packages  = $::tomcat::params::packages,
+$service_name = $::tomcat::params::service_name,
+$service_state = $::tomcat::params::service_state,
+$tomcat_cfg_loaded = $::tomcat::params::tomcat_cfg_loaded,
+$java_home = $::tomcat::params::java_home,
+$xms = $::tomcat::xms,
+$xmx = $::tomcat::params::xmx,
+$maxpermsize = $::tomcat::params::maxpermsize,
+$java_opts = "-Xms${xms} -Xmx${xmx} -XX:MaxPermSize=${maxpermsize} -Djava.security.egd=file:/dev/./urandom",
+$catalina_base = $::tomcat::params::catalina_base,
+$catalina_home = $::tomcat::params::catalina_home,
+$jasper_home = $::tomcat::params::jasper_home,
+$catalina_tmpdir = $::tomcat::params::catalina_tmpdir,
+$security_manager = $::tomcat::params::security_manager,
+$shutdown_wait = $::tomcat::params::shutdown_wait,
+$shutdown_verbose = $::tomcat::params::shutdown_verbose,
+$catalina_pid = $::tomcat::params::catalina_pid
+)inherits tomcat::params{
+
+include java::install
+include tomcat::install
+include tomcat::config
+include tomcat::service
+
+}
+                                                                                                
+during node classification we can overwrite parameters defined in parametrized classes
+
+to pass params from node definition to parametrised classes remove include and add class
+
+app.pp
+
+change from
+include tomcat
+
+chnage to 
+
+
+class {'::tomcat':
+xms => "54m",
+xmx => "80m"
+}
+
+***********
+
+
+
+
+
+
+
+
 
 
 
