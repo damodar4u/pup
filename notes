@@ -778,7 +778,17 @@ puppetlabs/control-repo https://github.com/puppetlabs/control-repo
 create /etc/puppetlabs/r10k/r10k.yaml, replace git repo, 
 
 
+# The location to use for storing cached Git repos
+:cachedir: '/var/cache/r10k'
 
+# A list of git repositories to create
+:sources:
+  # This will clone the git repository and instantiate an environment per
+  # branch in /etc/puppetlabs/code/environments
+  :my-org:
+    remote: 'YOUR_GIT_CONTROL_REPO_HERE'
+    basedir: '/etc/puppetlabs/code/environments'
+    
 
 4502b5ac6032efcf16103a43677ebb1b
 
