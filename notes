@@ -793,6 +793,85 @@ create /etc/puppetlabs/r10k/r10k.yaml, replace git repo,
 4502b5ac6032efcf16103a43677ebb1b
 
 
+clone your control-repo
+/etc/puppetlabs/r10k
+git clone https://github.com/damodar4u/control-repo.git
+
+This is where we define what to deploy to which env
+/etc/puppetlabs/r10k/control-repo/Puppetfile
+
+
+how to revision control our modules
+
+create a new repo for each module 
+java 
+tomcat
+
+puppet-module-tomcat
+
+
+cd /workspace/code/environments/production/modules/tomcat
+git init
+git add *
+git commit -a -m "importing tomcat module code"
+git remote add origin https://github.com/damodar4u/puppet-module-tomcat.git
+git push -u origin master
+
+
+puppet-module-java
+
+cd /workspace/code/environments/production/modules/java/
+ git init
+ git add *
+ git commit -a -m "importing java module code"
+git remote add origin https://github.com/damodar4u/puppet-module-java.git
+
+
+Now write puppet file in control repo
+
+/etc/puppetlabs/r10k/control-repo/Puppetfile
+
+mod 'tomcat',
+  :git    => 'https://github.com/damodar4u/puppet-module-tomcat.git'
+
+mod 'java',
+  :git    => 'https://github.com/damodar4u/puppet-module-java.git'
+
+
+make sure you copy all hieradata and manifests into control repo and push it to git so we don't loose any thing when r10 is run
+
+it copies code from git to controlrepo branches to respective environments
+
+inside control repo
+cd /etc/puppetlabs/r10k/control-repo
+cp -r /workspace/code/environments/production/hieradata hieradata
+cp -r /workspace/code/environments/production/manifests/* manifests/
+
+git add hieradata/*
+git add manifests/*
+
+git commit -a -m "pushing all manifests and hieradata under envbironments to control repo"
+git push origin production
+
+now r10k it is going to deploy at specified location in r10k.yaml
+
+deploy r10k using 
+
+/opt/puppetlabs/puppet/bin/r10k deploy environment -v -p
+
+to deploy specific env
+
+/opt/puppetlabs/puppet/bin/r10k deploy environment <branch> -v -p
+
+
+
+
+
+
+
+
+
+
 
 
 
