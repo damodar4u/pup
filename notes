@@ -708,7 +708,83 @@ xmx => "80m"
 ***********
 
 
-Creating different confi
+Environments
+
+puppet agent -t 
+
+defaults gets the code from production env 
+
+how to create dev environment and add nodes in that env
+
+cd /workspace/code/environments/
+cp -r -p production dev
+puppet agent -t --environment dev
+
+how to make it permananent ?
+add it a config file on the new node 
+/etc/puppetlabs/puppet/puppet.conf
+
+[agent]
+  environment = 'dev'
+
+
+ puppet agent -t
+
+
+How to apply different configurations to each environment ?
+
+2 version of a code running in 2 diff env 
+
+hiera
+
+************
+r10k / code manager
+
+How to deploy the code to different environemnets 
+
+deployment of code from git to master using r10k
+
+setup a control repo
+
+https://github.com/puppetlabs/control-repo
+
+manifests/sites.pp node definition
+
+site/{roles/profiles}/manifests/
+
+each branch in yopur environment represent a control repo
+
+
+puppetfile 
+what modules to deploy from where
+
+install r10k in master
+/opt/puppetlabs/puppet/bin/gem install r10k
+/opt/puppetlabs/puppet/bin/r10k help
+
+
+https://github.com/puppetlabs/r10k
+
+setup control repo (which is what is read by r10 k,) we will define everything that we want to add
+
+
+mkdir /etc/puppetlabs/r10k/
+
+fork control repo to your account 
+
+clone control repo from
+puppetlabs/control-repo https://github.com/puppetlabs/control-repo
+
+create /etc/puppetlabs/r10k/r10k.yaml, replace git repo, 
+
+
+
+
+4502b5ac6032efcf16103a43677ebb1b
+
+
+
+
 
 
 
