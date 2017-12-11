@@ -907,8 +907,8 @@ for each hierarchy , there is a data directory
                                                 
     :hierarchy:                                                                                                                 
       - "nodes/%{::trusted.certname}"                                                                                           
-      - "%{::environment}"                                                                                                      
-      - "%{::osfamily}"                                                                                                         
+ #    - "%{::environment}"                                                                                                      
+ #    - "%{::osfamily}"                                                                                                         
       - "common"                                                                                                                
 
 service puppetserver restart
@@ -948,13 +948,64 @@ include tomcat
 
 use hiera to classify the nodes 
 
+outside node definition of all classes we need to add at the top in both environments
+heira_include('classes')
+
+puppet module install puppetlabs-ntp --target-dir /workspace/code/environments/production/modules/
+
+change common.yal
+vi /workspace/code/environments/production/hieradata/common.yaml
+---
+tomcat::xms: "72"
+tomcat::xmx: "300"
+tomcat::maxpermsize: "100"
+classes:
+ - ntp
+
+app.pp in production environment
+
+hiera_include('classes')
+node 'node1' {
+include tomcat
+notify {"***** node1 block****":
+
+message => "
+Im here in node1
+"
+}
+}
+
+node default {
+notify {"checkpoint1":
+message => "
+default block applied
+"
+}
+}
 
 
 
 
+applies per environment to all nodes
 
 
+run puppet agent
 
+
+overwrite properties based on the heirarchy we have created
+
+mkdir /workspace/code/environments/production/hieradata/nodes
+
+puppet cert list -a
+node1.codespaces.io
+
+vi /workspace/code/environments/production/hieradata/nodes/node1.codespaces.io.yaml
+
+---
+tomcat::xms: "69"
+tomcat::xmx: "400"
+tomcat::maxpermsize: "100"
+ntp::servers: ["0.node1.pool.ntp.org","0.node1.pool.ntp.org","0.node1.pool.ntp.org"]
 
 
 
