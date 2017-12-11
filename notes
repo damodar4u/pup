@@ -857,11 +857,101 @@ now r10k it is going to deploy at specified location in r10k.yaml
 
 deploy r10k using 
 
-/opt/puppetlabs/puppet/bin/r10k deploy environment -v -p
+/opt/puppetlabs/puppet/bin/r10k deploy environment -v -p  // pushes all env 
 
 to deploy specific env
 
-/opt/puppetlabs/puppet/bin/r10k deploy environment <branch> -v -p
+/opt/puppetlabs/puppet/bin/r10k deploy environment <branch> -v -p // pushes only specified branch
+
+************
+deploy to dev env
+
+
+cd /etc/puppetlabs/r10k/control-repo
+
+git checkout -b dev
+
+make chnages to Pupprtfile and app.pp to reflect correct modules and branches, hieradata to be deployed and to which nodes, remove site.pp
+
+commit and push to dev branch
+
+
+
+*******
+
+%{fqdn}
+%{environment}
+%{network_eth0}
+common
+
+
+how to configure hiera
+
+/etc/puppetlabs/puppet/hiera.yaml
+
+this is where we define our heirarchy
+
+each of the hierarchy represents a yaml or json file 
+Any chnages to hiera.yaml , we should restrat puppet server
+
+where do we define properties ?
+for each hierarchy , there is a data directory
+
+
+    ---                                                                                                                         
+    :backends:                                                                                                                  
+      - yaml                                                                                                                    
+      - json                                                                                                                    
+    :yaml:                                                                                                                      
+      :datadir: "/workspace/code/environments/%{::environment}/hieradata"                                                       
+                                                
+    :hierarchy:                                                                                                                 
+      - "nodes/%{::trusted.certname}"                                                                                           
+      - "%{::environment}"                                                                                                      
+      - "%{::osfamily}"                                                                                                         
+      - "common"                                                                                                                
+
+service puppetserver restart
+
+
+how to make config specific to env
+
+vi /workspace/code/environments/production/hieradata/common.yaml
+---
+tomcat::xms: "72"
+tomcat::xmx: "300"
+tomcat::maxpermsize: "100"
+
+
+vi /workspace/code/environments/dev/hieradata/common.yaml
+---
+tomcat::xms: "72"
+tomcat::xmx: "144"
+tomcat::maxpermsize: "80"
+
+
+run puppet agent
+
+change the node definition by removing class tomcat and add include tomcat
+
+"/workspace/code/environments/production/manifests/app.pp"
+remove 
+
+class {'tomcat':
+xms => "50m"
+}
+
+
+Add
+
+include tomcat
+
+use hiera to classify the nodes 
+
+
+
+
+
 
 
 
